@@ -71,7 +71,9 @@ To capture traffic yourself: enable **Bluetooth HCI snoop log** in Android devel
 
 This is an unofficial project. It is not affiliated with or endorsed by Shenshou, Bandai, or the makers of the WeChat mini-program. Use it at your own risk.
 
-It was tested only with the **Shenshou MGEX Unicorn LED kit, third batch**. It has not been tested with any other kit yet. Mode code `06` in the Scenes list is not used by the official app and caused very fast flashing in testing, so it is left out.
+It was tested only with the **Shenshou MGEX Unicorn LED kit, third batch**. It has not been tested with any other kit yet.
+
+Mode code `06` in the Scenes list is not used by the official app and caused very fast flashing in testing, so it is left out.
 
 ## License
 
