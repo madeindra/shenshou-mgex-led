@@ -29,7 +29,7 @@ The page must be opened from an `https://` address or from `localhost`.
 ## Usage
 
 1. Open the hosted page (see below), or serve `index.html` locally.
-2. Close the WeChat mini-program first. The kit accepts only one connection at a time.
+2. If the kit is connected to any other app, close that app first. The kit accepts only one connection at a time.
 3. Press **Connect** and pick your kit from the list. Kits show up with a name starting with `632-`.
 
 ### Hosting it yourself
@@ -45,7 +45,7 @@ python3 -m http.server 8000
 
 ## Compatibility
 
-Tested on one kit (advertised name `632-…`). Other production batches may use different firmware. If the page can't find or control your kit:
+Tested only with the Shenshou MGEX Unicorn LED kit, third batch (advertised name `632-…`). Other kits and production batches may use different firmware. If the page can't find or control your kit:
 
 1. Check the kit's Bluetooth services with the free [nRF Connect](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-mobile) app.
 2. Open **Settings** at the bottom of the page and enter the UUIDs you found.
@@ -69,7 +69,9 @@ To capture traffic yourself: enable **Bluetooth HCI snoop log** in Android devel
 
 ## Disclaimer
 
-This is an unofficial project. It is not affiliated with or endorsed by Shenshou, Bandai, or the makers of the WeChat mini-program. Use it at your own risk. Mode code `06` in the Scenes list is not used by the official app and caused very fast flashing in testing, so it is left out.
+This is an unofficial project. It is not affiliated with or endorsed by Shenshou, Bandai, or the makers of the WeChat mini-program. Use it at your own risk.
+
+It was tested only with the **Shenshou MGEX Unicorn LED kit, third batch**. It has not been tested with any other kit yet. Mode code `06` in the Scenes list is not used by the official app and caused very fast flashing in testing, so it is left out.
 
 ## License
 
