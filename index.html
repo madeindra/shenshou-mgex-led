@@ -88,13 +88,16 @@
   .pitem .name { flex: 1; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .strip { width: 120px; height: 18px; border-radius: 4px; display: flex; overflow: hidden; border: 1px solid var(--line); flex: none; background: #000; }
   .strip span { flex: 1; }
+  a { color: var(--accent); }
+  .foot { text-align: center; color: var(--muted); font-size: 12px; line-height: 1.6; margin-top: 8px; }
+  .foot a { display: block; }
   .empty { color: var(--muted); font-size: 14px; padding: 16px 0; text-align: center; }
 </style>
 </head>
 <body>
 <main>
   <h1>Shenshou MGEX LED Controller</h1>
-  <div class="sub">Replaces the 炫彩灯光 WeChat mini-program. Chrome or Edge, desktop or Android.</div>
+  <div class="sub">Replaces the 炫彩灯光 WeChat mini-program. Chrome or Edge, desktop or Android. <a href="https://github.com/madeindra/shenshou-mgex-led">Source code</a></div>
 
   <div class="warn" id="supportWarn"></div>
 
@@ -295,6 +298,11 @@
     </div>
     <div id="log"></div>
   </section>
+
+  <footer class="foot">
+    Open source under the MIT license.
+    <a href="https://github.com/madeindra/shenshou-mgex-led">Source code, protocol notes and issues on GitHub</a>
+  </footer>
 </main>
 
 <script>
