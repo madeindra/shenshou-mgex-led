@@ -127,7 +127,7 @@
           <div class="marker" id="wheelMarker" aria-hidden="true"></div>
         </div>
         <div class="palette" id="wheelPalette"></div>
-        <div class="hint">Applies to the current effect or quick mode.</div>
+        <div class="hint">Applies to the current effect. From a quick mode or scene, switches to Solid.</div>
       </div>
     </section>
 
@@ -612,8 +612,8 @@
   function setSolid(h) {
     placeMarker(h);
     curColor = hexToRgb(h);
-    // Keep the current quick mode or effect; if a scene was running, fall back to Solid.
-    if (curFx == null) curFx = 0x01;
+    // Keep the current effect (01-09). From a quick mode (C9-CE) or a scene, switch to Solid.
+    if (curFx == null || curFx >= 0xc9) curFx = 0x01;
     markActive(effectBtns[curFx]);
     send(P.fx(curFx, ...curColor), 'fx');
   }
