@@ -2,6 +2,8 @@
 
 A browser-based controller for the **Shenshou MGEX Unicorn Bluetooth LED kit**. It replaces the "炫彩灯光" WeChat mini-program, so you can control the kit from Chrome without WeChat.
 
+**Open the controller: https://madeindra.dev/shenshou-mgex-led/**
+
 Everything runs in a single `index.html` file using the [Web Bluetooth API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API). No install, no server, no account.
 
 ## Features
@@ -28,7 +30,7 @@ The page must be opened from an `https://` address or from `localhost`.
 
 ## Usage
 
-1. Open the hosted page (see below), or serve `index.html` locally.
+1. Open https://madeindra.dev/shenshou-mgex-led/ in a supported browser, or host it yourself (see below).
 2. If the kit is connected to any other app, close that app first. The kit accepts only one connection at a time.
 3. Press **Connect** and pick your kit from the list. Kits show up with a name starting with `632-`.
 
