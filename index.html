@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shenshou MGEX LED Controller</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #181b22; --panel2: #20242d; --line: #2c313c;
+    --text: #e8eaef; --muted: #8b93a3; --accent: #6ea8ff; --ok: #4cc38a; --warn: #f0b429; --bad: #ef5b5b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  main { max-width: 720px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  button { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  button.primary { background: var(--accent); color: #0b1020; border-color: var(--accent); font-weight: 600; }
+  button.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  button.danger:hover:not(:disabled) { border-color: var(--bad); color: #ffb3b3; }
+  .small { font-size: 12px; padding: 6px 10px; }
+  .status { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); }
+  .dot.on { background: var(--ok); } .dot.busy { background: var(--warn); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+  #colors { grid-template-columns: repeat(3, 1fr); }
+  #colors button { padding: 12px 8px; gap: 6px; white-space: nowrap; }
+  .grid button { padding: 12px 8px; display: flex; align-items: center; gap: 8px; justify-content: flex-start; }
+  .sw { width: 14px; height: 14px; border-radius: 4px; flex: none; border: 1px solid rgba(255,255,255,.2); }
+  .slider { display: grid; grid-template-columns: 90px 1fr 44px; gap: 12px; align-items: center; margin: 6px 0; }
+  .slider label { font-size: 14px; }
+  .slider output { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .toggle button { border: 0; border-radius: 0; }
+  .toggle button.active { background: var(--accent); color: #0b1020; box-shadow: none; }
+  details summary { cursor: pointer; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+  .field { display: grid; gap: 4px; margin-top: 12px; }
+  .field label { font-size: 13px; color: var(--muted); }
+  input.txt, .field input { font: 13px ui-monospace, Menlo, Consolas, monospace; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; }
+  .hint { font-size: 12px; color: var(--muted); line-height: 1.45; }
+  .warn { background: rgba(240,180,41,.08); border: 1px solid rgba(240,180,41,.35); color: #f5d27a; border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 14px; display: none; }
+  #log { font: 12px ui-monospace, Menlo, Consolas, monospace; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; height: 160px; overflow-y: auto; white-space: pre-wrap; color: var(--muted); }
+  #log .tx { color: #9ec5ff; } #log .rx { color: #8fe0b6; } #log .err { color: #ff9a9a; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 10px 16px; color: var(--muted); font-weight: 600; }
+  .tabs button.on { color: var(--text); border-bottom-color: var(--accent); }
+  .hidden { display: none !important; }
+
+  /* Color wheel + palette */
+  .ledlayout { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .colorcol { display: grid; gap: 12px; justify-items: center; }
+  .colorcol > * { width: 100%; max-width: 340px; }
+  .wheelbox { position: relative; aspect-ratio: 1 / 1; }
+  #wheel { display: block; width: 100%; height: 100%; border-radius: 50%; touch-action: none; cursor: crosshair; }
+  .marker { position: absolute; width: 28px; height: 28px; border-radius: 50%; transform: translate(-50%, -50%);
+            border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.5);
+            background: #ffffff; pointer-events: none; left: 50%; top: 50%; transition: left .12s, top .12s; }
+  .marker.dragging { transition: none; }
+  .ledside { display: grid; gap: 10px; flex: 1; min-width: 200px; align-content: start; }
+  .ledside .slider { grid-template-columns: 110px 1fr 36px; margin: 0; }
+  .ledside .slider label { font-size: 13px; }
+  .ledside .slider .toggle { justify-self: start; }
+  .fxgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .fxgrid button { font-size: 13px; padding: 8px 6px; }
+  input[type=color] { width: 100%; height: 40px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); padding: 2px; cursor: pointer; }
+  .palette { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .palette button { padding: 0; height: 34px; border-radius: 8px; border: 2px solid rgba(255,255,255,.18); }
+  .palette button:hover:not(:disabled) { border-color: #fff; }
+
+  /* LED map */
+  .ledmap { position: relative; width: 260px; height: 360px; background: #050608; border: 1px solid var(--line); border-radius: 12px; flex: none; }
+  .led { position: absolute; transform: translate(-50%,-50%); width: 32px; height: 32px; padding: 0; border-radius: 8px; background: #000; border: 2px solid #5b6270; }
+  .led.sel { border-color: #fff; box-shadow: 0 0 0 3px var(--accent); }
+
+  /* Preset list */
+  .plist { display: grid; gap: 8px; }
+  .pitem { display: flex; gap: 10px; align-items: center; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; cursor: pointer; }
+  .pitem:hover { border-color: var(--accent); }
+  .pitem.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .pitem .name { flex: 1; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .strip { width: 120px; height: 18px; border-radius: 4px; display: flex; overflow: hidden; border: 1px solid var(--line); flex: none; background: #000; }
+  .strip span { flex: 1; }
+  .empty { color: var(--muted); font-size: 14px; padding: 16px 0; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Shenshou MGEX LED Controller</h1>
+  <div class="sub">Replaces the 炫彩灯光 WeChat mini-program. Chrome or Edge, desktop or Android.</div>
+
+  <div class="warn" id="supportWarn"></div>
+
+  <section>
+    <div class="row">
+      <button class="primary" id="btnConnect">Connect</button>
+      <button id="btnDisconnect" disabled>Disconnect</button>
+      <span class="status"><span class="dot" id="dot"></span><span id="statusText">Not connected</span></span>
+    </div>
+  </section>
+
+  <nav class="tabs">
+    <button id="tabControl" class="on">Color</button>
+    <button id="tabScenes">Scenes</button>
+    <button id="tabPresets">Presets</button>
+  </nav>
+
+  <!-- ============ CONTROL TAB ============ -->
+  <div id="viewControl">
+    <section>
+      <h2>Quick modes</h2>
+      <div class="grid" id="colors"></div>
+    </section>
+
+    <section>
+      <h2>Color</h2>
+      <div class="colorcol">
+        <div class="wheelbox">
+          <canvas id="wheel" width="600" height="600" aria-label="Color wheel"></canvas>
+          <div class="marker" id="wheelMarker" aria-hidden="true"></div>
+        </div>
+        <div class="palette" id="wheelPalette"></div>
+        <div class="hint">Applies to the current effect or quick mode.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Effects</h2>
+      <div class="grid" id="effects"></div>
+    </section>
+  </div>
+
+  <!-- ============ SCENES TAB ============ -->
+  <div id="viewScenes" class="hidden">
+    <section>
+      <h2>Rainbow</h2>
+      <div class="grid" id="scenesRainbow"></div>
+    </section>
+    <section>
+      <h2>Three colors</h2>
+      <div class="grid" id="scenesTri"></div>
+    </section>
+  </div>
+
+  <!-- ============ ADJUST (Color + Scenes tabs) ============ -->
+  <div id="viewAdjust">
+    <section>
+      <h2>Adjust</h2>
+      <div class="slider">
+        <label for="bri">Brightness</label>
+        <input type="range" id="bri" min="1" max="100" value="100">
+        <output id="briOut">100</output>
+      </div>
+      <div class="slider">
+        <label for="spd">Speed</label>
+        <input type="range" id="spd" min="1" max="100" value="100">
+        <output id="spdOut">100</output>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <span style="font-size:14px;width:90px">Polarity</span>
+        <div class="toggle">
+          <button id="polPos" class="active ctl">Pos</button>
+          <button id="polNeg" class="ctl">Neg</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ PRESETS TAB: LIST ============ -->
+  <div id="viewPresetList" class="hidden">
+    <section>
+      <div class="row" style="justify-content:space-between;margin-bottom:12px">
+        <h2 style="margin:0">Presets</h2>
+        <button class="primary" id="btnNewPreset">+ New preset</button>
+      </div>
+      <div class="plist" id="presetList"></div>
+      <div class="hint" style="margin-top:10px">Tap a preset to apply it to the light.</div>
+    </section>
+    <section>
+      <h2>Backup and share</h2>
+      <div class="row">
+        <button id="btnExport">Export JSON</button>
+        <button id="btnImport">Import JSON</button>
+        <input type="file" id="importFile" accept=".json,application/json" class="hidden">
+      </div>
+      <div class="hint" id="ioMsg" style="margin-top:8px">Presets are saved in this browser. Export to back them up or send them to a friend.</div>
+    </section>
+  </div>
+
+  <!-- ============ PRESETS TAB: EDITOR ============ -->
+  <div id="viewPresetEdit" class="hidden">
+    <section>
+      <div class="row" style="justify-content:space-between;margin-bottom:12px">
+        <h2 style="margin:0" id="editTitle">New preset</h2>
+        <button class="small" id="btnEditBack">Back</button>
+      </div>
+      <div class="ledlayout">
+        <div class="ledmap" id="ledmap"></div>
+        <div class="ledside">
+          <div class="hint" id="ledSelInfo">Tap squares to select them, then pick a color.</div>
+          <div class="palette" id="ledPalette"></div>
+          <input type="color" id="ledPick" value="#ff0000" title="Custom color">
+          <div class="row" style="gap:6px">
+            <button class="small" id="ledAll">Select all</button>
+            <button class="small" id="ledNone">Clear selection</button>
+            <button class="small" id="ledOff">Turn selected off</button>
+          </div>
+          <div class="slider">
+            <label for="ledLvl">Selected LEDs</label>
+            <input type="range" id="ledLvl" min="5" max="100" value="100">
+            <output id="ledLvlOut">100</output>
+          </div>
+          <div class="hint">Dims only the selected LEDs (sends a darker color).</div>
+          <div class="field" style="margin-top:4px">
+            <label>Preset effect</label>
+            <div class="fxgrid" id="presetFx"></div>
+          </div>
+          <div class="slider">
+            <label for="pBri">Brightness</label>
+            <input type="range" id="pBri" min="1" max="100" value="100">
+            <output id="pBriOut">100</output>
+          </div>
+          <div class="slider">
+            <label for="pSpd">Speed</label>
+            <input type="range" id="pSpd" min="1" max="100" value="100">
+            <output id="pSpdOut">100</output>
+          </div>
+          <div class="slider">
+            <label>Polarity</label>
+            <div class="toggle">
+              <button id="pPolPos" class="active">Pos</button>
+              <button id="pPolNeg">Neg</button>
+            </div>
+          </div>
+          <div class="hint">Brightness, speed and polarity apply to the whole preset.</div>
+          <div class="field">
+            <label for="presetName">Preset name</label>
+            <input id="presetName" class="txt" placeholder="e.g. Battle mode">
+          </div>
+          <div class="row">
+            <button class="primary" id="btnSavePreset">Save preset</button>
+            <button id="btnCancelEdit">Cancel</button>
+          </div>
+          <div class="hint" id="editMsg">While connected, changes preview live on the light.</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section>
+    <details id="settings">
+      <summary>Settings</summary>
+      <div class="field">
+        <label for="svcUuid">Control service UUID</label>
+        <input id="svcUuid" placeholder="a950" spellcheck="false">
+        <div class="hint">The service that holds the write and notify characteristics (a950 on the tested kit). If another batch differs, enter several separated by commas.</div>
+      </div>
+      <div class="field">
+        <label for="advUuid">Advertised UUID (used to find kits)</label>
+        <input id="advUuid" placeholder="af30" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="writeUuid">Write characteristic UUID</label>
+        <input id="writeUuid" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="notifyUuid">Notify characteristic UUID</label>
+        <input id="notifyUuid" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="namePrefix">Device name prefix</label>
+        <input id="namePrefix" placeholder="632-" spellcheck="false">
+        <div class="hint">The picker shows devices matching the name prefix or the advertised UUID. Clear both to list every nearby device.</div>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button id="btnSave">Save</button>
+        <button id="btnReset">Reset to defaults</button>
+        <button id="btnShare">Copy share link</button>
+      </div>
+      <div class="hint" id="settingsMsg" style="margin-top:6px"></div>
+    </details>
+  </section>
+
+  <section>
+    <div class="row" style="justify-content:space-between;margin-bottom:8px">
+      <h2 style="margin:0">Log</h2>
+      <button class="small" id="btnClearLog">Clear</button>
+    </div>
+    <div id="log"></div>
+  </section>
+</main>
+
+<script>
+(() => {
+  // ================= Protocol (decoded from btsnoop captures) =================
+  // Packet: 55 AA [CMD] [LEN] [DATA...] 00 00. Colors on the wire are G, R, B.
+  const DEFAULTS = { service: 'a950', write: 'a951', notify: 'a953', advertised: 'af30', namePrefix: '632-' };
+
+  // name = cleaned-up English, orig = label in the WeChat mini-program (shown as tooltip)
+  const MODES = [
+    { name: 'Red',       orig: 'Red',        code: 0xc9, sw: '#ff3b3b' },
+    { name: 'Green',     orig: 'Green',      code: 0xca, sw: '#33d17a' },
+    { name: 'Two-tone',  orig: 'Two-color',  code: 0xcb, sw: 'linear-gradient(135deg,#ff3b3b 50%,#33d17a 50%)' },
+    { name: 'Blue',      orig: 'Blue',       code: 0xcc, sw: '#3b82ff' },
+    { name: 'Yellow',    orig: 'Yellow',     code: 0xcd, sw: '#ffd23b' },
+    { name: 'Electro',   orig: 'Electronic', code: 0xce, sw: 'conic-gradient(#ff3b3b,#ffd23b,#33d17a,#3bd1ff,#3b82ff,#c43bff,#ff3b3b)' }
+  ];
+  const EFFECTS = [
+    { name: 'Solid',   orig: 'Static',        code: 0x01 }, { name: 'Breathe', orig: 'Breath',     code: 0x02 },
+    { name: 'Strobe',  orig: 'Strobo',        code: 0x03 }, { name: 'Comet',   orig: 'Tail',       code: 0x04 },
+    { name: 'Flow',    orig: 'Flow',          code: 0x05 }, { name: 'Stack',   orig: 'Pile up',    code: 0x06 },
+    { name: 'Marquee', orig: 'Horse racing',  code: 0x07 }, { name: 'Chase',   orig: 'Chasing light', code: 0x08 },
+    { name: 'Curtain', orig: 'Curtain call',  code: 0x09 }
+  ];
+  // "Colorful" tab of the mini-program. Sent as cmd 02 with sub-type 03.
+  const SCENES_RAINBOW = [
+    { name: 'Rainbow fade',    orig: 'seven color gradi…',  code: 0x01 },
+    { name: 'Rainbow shimmer', orig: 'seven color irides…', code: 0x02 },
+    { name: 'Rainbow strobe',  orig: 'seven color strobe',  code: 0x03 },
+    { name: 'Rainbow jump',    orig: 'seven color transi…', code: 0x04 },
+    { name: 'Rainbow sparkle', orig: 'seven color sp…',     code: 0x05 }
+  ];
+  const SCENES_TRI = [
+    { name: 'Tri-color chase',   orig: 'three-coloured pur…',  code: 0x07 },
+    { name: 'Purple trio',       orig: 'three-colours of pu…', code: 0x08 },
+    { name: 'Yellow trio',       orig: 'three-colours of ye…', code: 0x09 },
+    { name: 'Tri-color fade',    orig: 'three-colours gradi… (1st)', code: 0x0a },
+    { name: 'Tri-color fade 2',  orig: 'three-colours gradi… (2nd)', code: 0x0b },
+    { name: 'Tri-color strobe',  orig: 'three-colours strob…', code: 0x0c },
+    { name: 'Tri-color flash',   orig: 'three-colours flashi…', code: 0x0d },
+    { name: 'Red, green, blue',  orig: 'tri color: red, gree…', code: 0x0e },
+    { name: 'Yellow, cyan, purple', orig: 'three colored, ye…', code: 0x0f }
+  ];
+  // Effects on the mini-program's custom preset screen (cmd 0A, and the effect byte of cmd 08).
+  // 01 and 09 confirmed from capture; the rest follow the button order.
+  const PRESET_FX = [
+    { name: 'Solid',   orig: 'static',        code: 0x01 }, { name: 'Breathe', orig: 'breathe',      code: 0x02 },
+    { name: 'Strobe',  orig: 'stroboscopic',  code: 0x03 }, { name: 'Comet',   orig: 'tail',         code: 0x04 },
+    { name: 'Flow',    orig: 'flow',          code: 0x05 }, { name: 'Stack',   orig: 'pile up',      code: 0x06 },
+    { name: 'Marquee', orig: 'horse racing',  code: 0x07 }, { name: 'Electro', orig: 'electronic',   code: 0x08 },
+    { name: 'Beat',    orig: 'beat',          code: 0x09 }
+  ];
+  // 12 evenly spaced hues + 2 whites. Yellow/orange use less green because LEDs render green strongly.
+  const PALETTE = [
+    ['White', '#ffffff'], ['Warm white', '#ff9a3c'], ['Red', '#ff0000'], ['Orange', '#ff4a00'],
+    ['Yellow', '#ffb400'], ['Lime', '#80ff00'], ['Green', '#00ff00'], ['Turquoise', '#00ff80'],
+    ['Cyan', '#00ffff'], ['Sky blue', '#0080ff'], ['Blue', '#0000ff'], ['Violet', '#8000ff'],
+    ['Magenta', '#ff00ff'], ['Pink', '#ff0080']
+  ];
+
+  const clamp = (v) => Math.max(1, Math.min(100, Math.round(v)));
+  const pkt = (cmd, data) => new Uint8Array([0x55, 0xaa, cmd, data.length, ...data, 0x00, 0x00]);
+  const P = {
+    init:       () => pkt(0x01, [0x00]),
+    // Quick modes (C9-CE) and effects (01-09) both take the current color (GRB).
+    fx:         (m, r, g, b) => pkt(0x02, [0x01, m, g, r, b, 0x00, 0x00, 0x00, 0x64, 0x64, 0x00]),
+    scene:      (m) => pkt(0x02, [0x03, m, 0x00, 0x00, 0xff, 0x00, 0xff, 0x00, 0x64, 0x64, 0x00]),
+    presetFx:   (m) => pkt(0x0a, [m]),
+    brightness: (v) => pkt(0x03, [clamp(v)]),
+    speed:      (v) => pkt(0x04, [clamp(v)]),
+    polarity:   (neg) => pkt(0x05, [neg ? 0x01 : 0x00]),
+    editPrep1:  () => pkt(0x09, [0x00]),
+    editPrep2:  () => pkt(0x0a, [0x01]),
+    ledOne:     (dev, r, g, b) => pkt(0x07, [dev, 0x01, g, r, b]),
+    preset:     (cols, mode, bri, spd) => {
+      const d = [];
+      for (let dev = 1; dev <= 17; dev++) { const [r, g, b] = cols[dev]; d.push(g, r, b); }
+      d.push(mode, clamp(bri), clamp(spd), 0x01);
+      return pkt(0x08, d);
+    }
+  };
+
+  // LED positions (percent of the map). dev = index on the wire.
+  const LEDS = [
+    { dev: 17, x: 50, y: 5,  part: 'Head' },          { dev: 13, x: 50, y: 16, part: 'Neck' },
+    { dev: 15, x: 20, y: 27, part: 'Left shoulder' }, { dev: 14, x: 37, y: 27, part: 'Left chest' },
+    { dev: 10, x: 63, y: 27, part: 'Right chest' },   { dev: 11, x: 80, y: 27, part: 'Right shoulder' },
+    { dev: 9,  x: 50, y: 38, part: 'Stomach' },
+    { dev: 16, x: 13, y: 48, part: 'Left forearm' },  { dev: 8,  x: 41, y: 49, part: 'Left waist' },
+    { dev: 7,  x: 59, y: 49, part: 'Right waist' },   { dev: 12, x: 87, y: 47, part: 'Right forearm' },
+    { dev: 4,  x: 36, y: 63, part: 'Left thigh' },    { dev: 3,  x: 64, y: 63, part: 'Right thigh' },
+    { dev: 5,  x: 31, y: 78, part: 'Left knee' },     { dev: 2,  x: 69, y: 78, part: 'Right knee' },
+    { dev: 6,  x: 27, y: 93, part: 'Left foot' },     { dev: 1,  x: 73, y: 93, part: 'Right foot' }
+  ];
+
+  // ================= Helpers =================
+  const $ = (id) => document.getElementById(id);
+  const hexToRgb = (h) => { h = h.replace('#', ''); return [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16)); };
+  const rgbToHex = (r, g, b) => '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+  function hsvToRgb(h, s, v) {
+    const f = (n) => { const k = (n + h / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); };
+    return [f(5), f(3), f(1)].map(x => Math.round(x * 255));
+  }
+  const hex = (b) => Array.from(b, x => x.toString(16).padStart(2, '0')).join(' ');
+  function log(msg, cls) {
+    const el = document.createElement('div'); if (cls) el.className = cls;
+    el.textContent = new Date().toLocaleTimeString() + '  ' + msg;
+    $('log').appendChild(el); $('log').scrollTop = $('log').scrollHeight;
+  }
+  $('btnClearLog').onclick = () => { $('log').innerHTML = ''; };
+
+  // ================= Settings =================
+  const STORE_KEY = 'ledkit.settings.v2';
+  function loadSettings() {
+    let s = { ...DEFAULTS };
+    try { const raw = localStorage.getItem(STORE_KEY); if (raw) s = { ...s, ...JSON.parse(raw) }; } catch (e) {}
+    const q = new URLSearchParams(location.search);
+    if (q.get('svc')) s.service = q.get('svc');
+    if (q.get('w')) s.write = q.get('w');
+    if (q.get('n')) s.notify = q.get('n');
+    if (q.has('p')) s.namePrefix = q.get('p');
+    if (q.has('a')) s.advertised = q.get('a');
+    if (!s.service) s.service = DEFAULTS.service;
+    return s;
+  }
+  function saveSettings(s) { try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); return true; } catch (e) { return false; } }
+  function readForm() {
+    return {
+      service: $('svcUuid').value.trim() || DEFAULTS.service,
+      write: $('writeUuid').value.trim() || DEFAULTS.write,
+      notify: $('notifyUuid').value.trim() || DEFAULTS.notify,
+      advertised: $('advUuid').value.trim(),
+      namePrefix: $('namePrefix').value.trim()
+    };
+  }
+  function fillForm(s) {
+    $('svcUuid').value = s.service; $('writeUuid').value = s.write; $('notifyUuid').value = s.notify;
+    $('advUuid').value = s.advertised || ''; $('namePrefix').value = s.namePrefix;
+  }
+  function normUuid(u) {
+    u = String(u).trim().toLowerCase().replace(/^0x/, '');
+    if (/^[0-9a-f]{4}$/.test(u) || /^[0-9a-f]{8}$/.test(u)) return BluetoothUUID.canonicalUUID(parseInt(u, 16));
+    return u;
+  }
+  const serviceList = (s) => s.service.split(',').map(x => x.trim()).filter(Boolean).map(normUuid);
+
+  let settings = loadSettings();
+  fillForm(settings);
+  $('btnSave').onclick = () => {
+    settings = readForm();
+    $('settingsMsg').textContent = saveSettings(settings) ? 'Saved in this browser.' : 'Could not save (storage blocked). Settings apply until you close the page.';
+  };
+  $('btnReset').onclick = () => { settings = { ...DEFAULTS }; fillForm(settings); saveSettings(settings); $('settingsMsg').textContent = 'Reset.'; };
+  $('btnShare').onclick = async () => {
+    const s = readForm(), u = new URL(location.href.split('?')[0]);
+    if (s.service !== DEFAULTS.service) u.searchParams.set('svc', s.service);
+    if (s.write !== DEFAULTS.write) u.searchParams.set('w', s.write);
+    if (s.notify !== DEFAULTS.notify) u.searchParams.set('n', s.notify);
+    if (s.namePrefix !== DEFAULTS.namePrefix) u.searchParams.set('p', s.namePrefix);
+    if (s.advertised !== DEFAULTS.advertised) u.searchParams.set('a', s.advertised);
+    try { await navigator.clipboard.writeText(u.toString()); $('settingsMsg').textContent = 'Link copied.'; }
+    catch (e) { $('settingsMsg').textContent = u.toString(); }
+  };
+
+  // ================= BLE =================
+  let device = null, writeChar = null, notifyChar = null, editPrimed = false;
+  const queue = []; let busy = false; const pendingKeyed = new Map();
+
+  function send(bytes, key) {
+    if (!writeChar) return;
+    if (key) {
+      if (pendingKeyed.has(key)) { pendingKeyed.get(key).bytes = bytes; return; }
+      const item = { bytes, key }; pendingKeyed.set(key, item); queue.push(item);
+    } else queue.push({ bytes });
+    pump();
+  }
+  async function pump() {
+    if (busy) return; busy = true;
+    while (queue.length && writeChar) {
+      const item = queue.shift(); if (item.key) pendingKeyed.delete(item.key);
+      try {
+        if (writeChar.writeValueWithoutResponse) await writeChar.writeValueWithoutResponse(item.bytes);
+        else await writeChar.writeValue(item.bytes);
+        log('TX ' + hex(item.bytes), 'tx');
+      } catch (e) { log('Write failed: ' + e.message, 'err'); }
+      await new Promise(r => setTimeout(r, 20));
+    }
+    busy = false;
+  }
+  function primeEdit() { if (!editPrimed && writeChar) { send(P.editPrep1()); send(P.editPrep2()); editPrimed = true; } }
+
+  function setStatus(state, text) {
+    $('dot').className = 'dot' + (state === 'on' ? ' on' : state === 'busy' ? ' busy' : '');
+    $('statusText').textContent = text;
+    const connected = state === 'on';
+    $('btnConnect').disabled = state !== 'off' || !('bluetooth' in navigator);
+    $('btnDisconnect').disabled = !connected;
+    document.querySelectorAll('.ctl').forEach(b => b.disabled = !connected);
+    $('bri').disabled = $('spd').disabled = !connected;
+  }
+
+  async function connect() {
+    settings = readForm();
+    const svcs = serviceList(settings);
+    const filters = [];
+    if (settings.namePrefix) filters.push({ namePrefix: settings.namePrefix });
+    if (settings.advertised) filters.push({ services: [normUuid(settings.advertised)] });
+    const opts = filters.length ? { filters, optionalServices: svcs } : { acceptAllDevices: true, optionalServices: svcs };
+    setStatus('busy', 'Choose your light...');
+    try {
+      device = await navigator.bluetooth.requestDevice(opts);
+      device.addEventListener('gattserverdisconnected', onDisconnected);
+      setStatus('busy', 'Connecting to ' + (device.name || 'device') + '...');
+      const server = await device.gatt.connect();
+      let service = null;
+      for (const s of svcs) { try { service = await server.getPrimaryService(s); break; } catch (e) {} }
+      if (!service) throw new Error('None of the configured services were found on this device.');
+      writeChar = await service.getCharacteristic(normUuid(settings.write));
+      try {
+        notifyChar = await service.getCharacteristic(normUuid(settings.notify));
+        await notifyChar.startNotifications();
+        notifyChar.addEventListener('characteristicvaluechanged', e => log('RX ' + hex(new Uint8Array(e.target.value.buffer)), 'rx'));
+      } catch (e) { log('Notifications unavailable: ' + e.message, 'err'); }
+      editPrimed = false;
+      log('Connected to ' + (device.name || device.id));
+      setStatus('on', 'Connected: ' + (device.name || 'LED kit'));
+      send(P.init());
+    } catch (e) {
+      log('Connect failed: ' + e.message, 'err');
+      cleanup(); setStatus('off', 'Not connected');
+    }
+  }
+  function cleanup() { writeChar = null; notifyChar = null; queue.length = 0; pendingKeyed.clear(); }
+  function onDisconnected() { log('Disconnected.'); cleanup(); setStatus('off', 'Not connected'); }
+  $('btnConnect').onclick = connect;
+  $('btnDisconnect').onclick = () => { if (device && device.gatt.connected) device.gatt.disconnect(); else onDisconnected(); };
+
+  // ================= Tabs / views =================
+  function show(view) {
+    $('viewControl').classList.toggle('hidden', view !== 'control');
+    $('viewScenes').classList.toggle('hidden', view !== 'scenes');
+    $('viewAdjust').classList.toggle('hidden', view !== 'control' && view !== 'scenes');
+    $('viewPresetList').classList.toggle('hidden', view !== 'list');
+    $('viewPresetEdit').classList.toggle('hidden', view !== 'edit');
+    $('tabControl').classList.toggle('on', view === 'control');
+    $('tabScenes').classList.toggle('on', view === 'scenes');
+    $('tabPresets').classList.toggle('on', view === 'list' || view === 'edit');
+  }
+  $('tabControl').onclick = () => show('control');
+  $('tabScenes').onclick = () => show('scenes');
+  $('tabPresets').onclick = () => { renderPresetList(); show('list'); };
+
+  // ================= Control tab =================
+  // Current color + effect, so the wheel and effect buttons work together.
+  let curColor = [255, 255, 255], curFx = 0x01;
+  const effectBtns = {};
+  function markActive(btn) {
+    document.querySelectorAll('.mode').forEach(x => x.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    activePreset = null;
+  }
+  function makeButtons(list, container, withSwatch, onPick, store) {
+    list.forEach(m => {
+      const b = document.createElement('button');
+      b.className = 'ctl mode';
+      b.title = 'In the app: ' + m.orig;
+      b.innerHTML = (withSwatch ? `<span class="sw" style="background:${m.sw}"></span>` : '') + `<span>${m.name}</span>`;
+      b.onclick = () => { markActive(b); onPick(m.code); };
+      if (store) store[m.code] = b;
+      container.appendChild(b);
+    });
+  }
+  // Quick modes also carry the current color (the mini-program sent the same color bytes for every button).
+  makeButtons(MODES, $('colors'), true, (c) => { curFx = c; send(P.fx(c, ...curColor), 'fx'); }, effectBtns);
+  makeButtons(EFFECTS, $('effects'), false, (c) => { curFx = c; send(P.fx(c, ...curColor), 'fx'); }, effectBtns);
+  makeButtons(SCENES_RAINBOW, $('scenesRainbow'), false, (c) => { curFx = null; send(P.scene(c)); });
+  makeButtons(SCENES_TRI, $('scenesTri'), false, (c) => { curFx = null; send(P.scene(c)); });
+
+  function makePalette(container, onPick, ctl) {
+    PALETTE.forEach(([name, c]) => {
+      const b = document.createElement('button');
+      if (ctl) b.className = 'ctl';
+      b.style.background = c; b.title = name; b.setAttribute('aria-label', name);
+      b.onclick = () => onPick(c);
+      container.appendChild(b);
+    });
+  }
+
+  // Color wheel
+  const wheel = $('wheel'), wctx = wheel.getContext('2d');
+  (function drawWheel() {
+    const W = wheel.width, R = W / 2, img = wctx.createImageData(W, W);
+    for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
+      const dx = x - R, dy = y - R, d = Math.hypot(dx, dy), i = (y * W + x) * 4;
+      if (d > R) continue;
+      const [r, g, b] = hsvToRgb((Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360, d / R, 1);
+      img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = 255;
+    }
+    wctx.putImageData(img, 0, 0);
+  })();
+  function rgbToHs(r, g, b) {
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    let h = 0;
+    if (d) h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return [(h * 60 + 360) % 360, mx ? d / mx : 0];
+  }
+  function placeMarker(hexColor) {
+    const [h, s] = rgbToHs(...hexToRgb(hexColor)), a = h * Math.PI / 180;
+    // Inset slightly so the circle stays inside the wheel at the edge
+    const r = Math.min(s * 50, 46);
+    const m = $('wheelMarker');
+    m.style.left = (50 + r * Math.cos(a)) + '%'; m.style.top = (50 + r * Math.sin(a)) + '%';
+    m.style.background = hexColor;
+  }
+  function setSolid(h) {
+    placeMarker(h);
+    curColor = hexToRgb(h);
+    // Keep the current quick mode or effect; if a scene was running, fall back to Solid.
+    if (curFx == null) curFx = 0x01;
+    markActive(effectBtns[curFx]);
+    send(P.fx(curFx, ...curColor), 'fx');
+  }
+  function wheelAt(e) {
+    const rect = wheel.getBoundingClientRect(), R = rect.width / 2;
+    const dx = e.clientX - rect.left - R, dy = e.clientY - rect.top - R;
+    setSolid(rgbToHex(...hsvToRgb((Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360, Math.min(1, Math.hypot(dx, dy) / R), 1)));
+  }
+  let dragging = false;
+  wheel.addEventListener('pointerdown', e => { if (!writeChar) return; dragging = true; $('wheelMarker').classList.add('dragging'); wheel.setPointerCapture(e.pointerId); wheelAt(e); });
+  wheel.addEventListener('pointermove', e => { if (dragging) wheelAt(e); });
+  const endDrag = () => { dragging = false; $('wheelMarker').classList.remove('dragging'); };
+  wheel.addEventListener('pointerup', endDrag);
+  wheel.addEventListener('pointercancel', endDrag);
+  placeMarker('#ffffff');
+  makePalette($('wheelPalette'), setSolid, true);
+
+  // Sliders & polarity
+  $('bri').oninput = (e) => { $('briOut').textContent = e.target.value; send(P.brightness(+e.target.value), 'bri'); };
+  $('spd').oninput = (e) => { $('spdOut').textContent = e.target.value; send(P.speed(+e.target.value), 'spd'); };
+  function setPolarity(neg) {
+    $('polPos').classList.toggle('active', !neg); $('polNeg').classList.toggle('active', neg);
+    send(P.polarity(neg));
+  }
+  $('polPos').onclick = () => setPolarity(false);
+  $('polNeg').onclick = () => setPolarity(true);
+
+  // ================= Presets: storage =================
+  // Format: [{ name, colors: { "1": "#rrggbb", ... "17": "#rrggbb" } }]  (keys = device index)
+  const PKEY = 'ledkit.presets.v2';
+  let memPresets = null; // fallback if localStorage is blocked
+  function getPresets() {
+    if (memPresets) return memPresets;
+    try {
+      const v2 = localStorage.getItem(PKEY);
+      if (v2) return JSON.parse(v2);
+      const v1 = JSON.parse(localStorage.getItem('ledkit.presets.v1') || 'null'); // migrate old format
+      if (v1) return Object.keys(v1).map(name => ({ name, colors: v1[name] }));
+    } catch (e) {}
+    return [];
+  }
+  function putPresets(list) {
+    try { localStorage.setItem(PKEY, JSON.stringify(list)); memPresets = null; return true; }
+    catch (e) { memPresets = list; return false; }
+  }
+  function validPreset(p) {
+    if (!p || typeof p.name !== 'string' || !p.colors) return false;
+    for (let d = 1; d <= 17; d++) if (!/^#[0-9a-f]{6}$/i.test(p.colors[d] || '')) return false;
+    return true;
+  }
+
+  // ================= Presets: list view =================
+  let activePreset = null;
+  function stripFor(colors) {
+    const s = document.createElement('div'); s.className = 'strip';
+    LEDS.forEach(l => { const c = document.createElement('span'); c.style.background = colors[l.dev]; s.appendChild(c); });
+    return s;
+  }
+  function renderPresetList() {
+    const list = getPresets(), box = $('presetList'); box.innerHTML = '';
+    if (!list.length) { box.innerHTML = '<div class="empty">No presets yet. Tap "+ New preset" to make one.</div>'; return; }
+    list.forEach((p, i) => {
+      const row = document.createElement('div'); row.className = 'pitem' + (activePreset === p.name ? ' on' : '');
+      const name = document.createElement('span'); name.className = 'name'; name.textContent = p.name;
+      const edit = document.createElement('button'); edit.className = 'small'; edit.textContent = 'Edit';
+      const del = document.createElement('button'); del.className = 'small danger'; del.textContent = 'Delete';
+      edit.onclick = (e) => { e.stopPropagation(); openEditor(i); };
+      del.onclick = (e) => {
+        e.stopPropagation();
+        if (del.dataset.confirm) { const l = getPresets(); l.splice(i, 1); putPresets(l); renderPresetList(); }
+        else { del.dataset.confirm = '1'; del.textContent = 'Confirm'; setTimeout(() => { del.textContent = 'Delete'; delete del.dataset.confirm; }, 3000); }
+      };
+      row.onclick = () => applyPreset(p);
+      row.append(stripFor(p.colors), name, edit, del);
+      box.appendChild(row);
+    });
+  }
+  function applyPreset(p) {
+    activePreset = p.name; renderPresetList();
+    if (!writeChar) { log('Connect first to apply "' + p.name + '".', 'err'); return; }
+    const cols = {}; for (let d = 1; d <= 17; d++) cols[d] = hexToRgb(p.colors[d]);
+    primeEdit();
+    send(P.preset(cols, p.fx || 0x01, p.bri || 100, p.spd || 100));
+    send(P.polarity(!!p.neg));
+    $('polPos').classList.toggle('active', !p.neg); $('polNeg').classList.toggle('active', !!p.neg);
+    log('Applied preset "' + p.name + '".');
+  }
+
+  // Export / import
+  $('btnExport').onclick = () => {
+    const data = JSON.stringify({ app: 'ledkit', version: 1, presets: getPresets() }, null, 2);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+    a.download = 'led-presets.json'; document.body.appendChild(a); a.click(); a.remove();
+    $('ioMsg').textContent = 'Exported ' + getPresets().length + ' preset(s) to led-presets.json.';
+  };
+  $('btnImport').onclick = () => $('importFile').click();
+  $('importFile').onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      const j = JSON.parse(await f.text());
+      const incoming = (Array.isArray(j) ? j : j.presets || []).filter(validPreset);
+      const list = getPresets();
+      incoming.forEach(p => { const i = list.findIndex(x => x.name === p.name); if (i >= 0) list[i] = p; else list.push(p); });
+      putPresets(list); renderPresetList();
+      $('ioMsg').textContent = 'Imported ' + incoming.length + ' preset(s). Same names were replaced.';
+    } catch (err) { $('ioMsg').textContent = 'Could not read that file: ' + err.message; }
+    e.target.value = '';
+  };
+
+  // ================= Presets: editor view =================
+  const ledColors = {}; const baseColors = {}; const levels = {}; const selected = new Set(); const ledEls = {};
+  const scaled = (rgb, lvl) => rgb.map(x => Math.round(x * lvl / 100));
+  let editingIndex = -1, presetFx = 0x01, presetNeg = false;
+  function setPPol(neg) { presetNeg = neg; $('pPolPos').classList.toggle('active', !neg); $('pPolNeg').classList.toggle('active', neg); }
+  $('pPolPos').onclick = () => { setPPol(false); send(P.polarity(false)); };
+  $('pPolNeg').onclick = () => { setPPol(true); send(P.polarity(true)); };
+  const fxEls = {};
+  PRESET_FX.forEach(f => {
+    const b = document.createElement('button');
+    b.textContent = f.name; b.title = 'In the app: ' + f.orig;
+    b.onclick = () => { setFx(f.code); if (writeChar) { primeEdit(); send(P.presetFx(f.code), 'pfx'); } };
+    fxEls[f.code] = b; $('presetFx').appendChild(b);
+  });
+  function setFx(code) { presetFx = code; PRESET_FX.forEach(f => fxEls[f.code].classList.toggle('active', f.code === code)); }
+  LEDS.forEach(l => {
+    const b = document.createElement('button');
+    b.className = 'led'; b.title = l.part; b.setAttribute('aria-label', l.part);
+    b.style.left = l.x + '%'; b.style.top = l.y + '%';
+    b.onclick = () => { selected.has(l.dev) ? selected.delete(l.dev) : selected.add(l.dev); renderLeds(); };
+    ledEls[l.dev] = b; $('ledmap').appendChild(b);
+  });
+  function renderLeds() {
+    LEDS.forEach(l => {
+      ledEls[l.dev].style.background = rgbToHex(...ledColors[l.dev]);
+      ledEls[l.dev].classList.toggle('sel', selected.has(l.dev));
+    });
+    $('ledSelInfo').textContent = selected.size ? selected.size + ' selected. Pick a color.' : 'Tap squares to select them, then pick a color.';
+    // Show the level of the selection (first selected LED)
+    const first = [...selected][0];
+    const lv = first ? levels[first] : 100;
+    $('ledLvl').value = lv; $('ledLvlOut').textContent = lv;
+  }
+  function openEditor(index) {
+    editingIndex = index; selected.clear();
+    const list = getPresets(), p = index >= 0 ? list[index] : null;
+    for (let d = 1; d <= 17; d++) {
+      baseColors[d] = p ? hexToRgb((p.base && p.base[d]) || p.colors[d]) : [0, 0, 0];
+      levels[d] = p && p.levels ? p.levels[d] || 100 : 100;
+      ledColors[d] = scaled(baseColors[d], levels[d]);
+    }
+    const pb = p ? p.bri || 100 : +$('bri').value, ps = p ? p.spd || 100 : +$('spd').value;
+    $('pBri').value = pb; $('pBriOut').textContent = pb; $('pSpd').value = ps; $('pSpdOut').textContent = ps;
+    setFx(p && p.fx ? p.fx : 0x01);
+    setPPol(!!(p && p.neg));
+    $('editTitle').textContent = p ? 'Edit preset' : 'New preset';
+    $('presetName').value = p ? p.name : '';
+    $('editMsg').textContent = writeChar ? 'Changes preview live on the light.' : 'Not connected: you can still design and save.';
+    renderLeds(); show('edit');
+    if (p && writeChar) applyPreset(p);
+  }
+  function colorSelected(h) {
+    if (!selected.size) { $('ledSelInfo').textContent = 'Select one or more squares first.'; return; }
+    const rgb = hexToRgb(h);
+    primeEdit();
+    selected.forEach(dev => {
+      baseColors[dev] = rgb; ledColors[dev] = scaled(rgb, levels[dev]);
+      send(P.ledOne(dev, ...ledColors[dev]), 'led' + dev);
+    });
+    $('ledPick').value = h; renderLeds();
+  }
+  $('ledLvl').oninput = (e) => {
+    const lv = +e.target.value; $('ledLvlOut').textContent = lv;
+    if (!selected.size) return;
+    primeEdit();
+    selected.forEach(dev => {
+      levels[dev] = lv; ledColors[dev] = scaled(baseColors[dev], lv);
+      send(P.ledOne(dev, ...ledColors[dev]), 'led' + dev);
+    });
+    LEDS.forEach(l => { ledEls[l.dev].style.background = rgbToHex(...ledColors[l.dev]); });
+  };
+  $('pBri').oninput = (e) => { $('pBriOut').textContent = e.target.value; send(P.brightness(+e.target.value), 'bri'); };
+  $('pSpd').oninput = (e) => { $('pSpdOut').textContent = e.target.value; send(P.speed(+e.target.value), 'spd'); };
+  makePalette($('ledPalette'), colorSelected, false);
+  $('ledPick').oninput = (e) => colorSelected(e.target.value);
+  $('ledAll').onclick = () => { LEDS.forEach(l => selected.add(l.dev)); renderLeds(); };
+  $('ledNone').onclick = () => { selected.clear(); renderLeds(); };
+  $('ledOff').onclick = () => colorSelected('#000000');
+  $('btnNewPreset').onclick = () => openEditor(-1);
+  const backToList = () => { renderPresetList(); show('list'); };
+  $('btnEditBack').onclick = backToList;
+  $('btnCancelEdit').onclick = backToList;
+  $('btnSavePreset').onclick = () => {
+    const name = $('presetName').value.trim();
+    if (!name) { $('editMsg').textContent = 'Give the preset a name first.'; $('presetName').focus(); return; }
+    const colors = {}, base = {}, lv = {};
+    for (let d = 1; d <= 17; d++) { colors[d] = rgbToHex(...ledColors[d]); base[d] = rgbToHex(...baseColors[d]); lv[d] = levels[d]; }
+    const bri = +$('pBri').value, spd = +$('pSpd').value;
+    const list = getPresets();
+    const clash = list.findIndex(x => x.name === name);
+    if (clash >= 0 && clash !== editingIndex) { $('editMsg').textContent = 'A preset with that name already exists. Pick another name.'; return; }
+    const entry = { name, colors, base, levels: lv, bri, spd, fx: presetFx, neg: presetNeg };
+    if (editingIndex >= 0) list[editingIndex] = entry; else list.push(entry);
+    if (!putPresets(list)) log('Browser storage is blocked: presets will be lost when you close the page. Use Export.', 'err');
+    activePreset = name;
+    if (writeChar) { primeEdit(); send(P.preset(ledColors, presetFx, bri, spd)); send(P.polarity(presetNeg)); }
+    backToList();
+  };
+
+  // ================= Start =================
+  if (!('bluetooth' in navigator)) {
+    $('supportWarn').style.display = 'block';
+    $('supportWarn').textContent = window.isSecureContext
+      ? 'This browser does not support Web Bluetooth. Use Chrome or Edge on desktop or Android. On iPhone, use the Bluefy browser.'
+      : 'Web Bluetooth needs HTTPS. Open this page from an https:// address (for example GitHub Pages) or from localhost.';
+  }
+  setStatus('off', 'Not connected');
+})();
+</script>
+</body>
+</html>
